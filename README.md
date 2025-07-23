@@ -1,10 +1,10 @@
-# NewsData – Daily Popular News Pipeline (FR)
+# NewsData – Pipeline des informations quotidiennes populaires françaises
 
 Récupération quotidienne des 200 articles les plus populaires en France, stockage en PostgreSQL et visualisations rapides des thématiques émergentes.
 
 ---
 
-## 🚀 Objectifs
+## Objectifs
 
 * **Interroger l’API NewsData.io**.
 * **Filtrer les articles du jour** (≥ 00:00 UTC) et insérer en base.
@@ -14,31 +14,36 @@ Récupération quotidienne des 200 articles les plus populaires en France, stock
 
 ---
 
-## 🗂️ Arborescence
+## Arborescence
 
 ```
 NewsData/
-├── db.sql                         # Création de la table articles_fr
-├── main.py                        # Pipeline d’ingestion + filtre "aujourd’hui"
-├── src/
-│   ├── plot_categories.py         # generate_category_wordcloud_figure()
-│   └── utils/
-│       └── translate.py           # translate_text() (Argos/LibreTranslate)
+├── .github/workflow/maj.yml        # Automatisation quotidienne
+├── .env
 ├── .gitignore
+├── db.sql                          # Création de la table articles_fr
+├── main.py                         # Pipeline d’ingestion + filtre "aujourd’hui"
+├── requirements.txt
+├── src/
+|   ├── core_logic.py  
+│   ├── plot_categories.py          # generate_category_wordcloud_figure()
+│   └── utils/
+|       ├── articles.py
+|       ├── db_helper.py
+│       └── translate.py
 └── README.md
 ```
 
-## 🧰 Stack technique
+## Stack technique
 
 * **Python** (géré via [`uv`](https://github.com/astral-sh/uv))
 * **PostgreSQL** (local)
-* **Requests**
-* **Matplotlib** pour la visualisation très simple
-* **Argos Translate** (offline) pour la traduction
+* **API Request**
+* **CI/CD** GitHub Actions pour l'automatisation journalière
 
 ---
 
-## ⚙️ Installation rapide
+## Installation rapide
 
 ### 1. Cloner & créer l’environnement
 
@@ -53,9 +58,7 @@ source env/bin/activate            # (Linux/Mac)
 ### 2. Installer les dépendances
 
 ```bash
-uv pip install -r requirements.txt  # si présent
-# ou
-uv pip install requests psycopg2-binary python-dotenv sqlalchemy matplotlib wordcloud argostranslate
+uv pip install -r requirements.txt
 ```
 
 ### 3. Variables d’environnement
@@ -77,7 +80,7 @@ psql -U postgres -d newsdata -f db.sql
 
 ---
 
-## 🏃 Exécuter le pipeline
+## Exécuter le pipeline
 
 ```bash
 python main.py
@@ -90,7 +93,7 @@ python main.py
 
 ---
 
-## 🈳 Traduction offline (Argos Translate)
+## Traduction offline (Argos Translate)
 
 Dans `src/utils/translate.py` :
 
@@ -99,21 +102,17 @@ Dans `src/utils/translate.py` :
 
 ---
 
-## 🗓️ Automatisation
+## Idées d’extension
 
-* **GitHub Actions** : déclencher un workflow journalier.
-
----
-
-## 🧭 Roadmap / Idées d’extension
-
+* [ ] Déploiement de la base de données sur AWS, GCP, etc.
 * [ ] Ajouter un **dashboard Streamlit** (top sources, timeline par jour)
 * [ ] Stocker aussi le **sentiment** (via HF transformers)
-* [ ] Extraire les **keywords** / **NER** et les compter en SQL
+* [ ] Extraire les **keywords** et les compter en SQL
 * [ ] Dockeriser (service app + DB + LibreTranslate)
-* [ ] CI/CD (GitHub Actions) pour tests + déploiement automatique
 
 ---
+
+## Exemple de résultats
 
 ![](outpouts/worldcloud_2025-07-23.png){height=200px}
 
