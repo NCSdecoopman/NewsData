@@ -35,7 +35,6 @@ def generate_category_wordcloud_figure(
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.imshow(wordcloud, interpolation='bilinear')
     ax.axis("off")
-    ax.set_title("Répartition des articles par catégorie", fontsize=16)
     plt.tight_layout()
 
     return fig

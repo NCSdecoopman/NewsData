@@ -1,88 +1,111 @@
+#!/usr/bin/env python3
+"""
+main.py – Ingestion quotidienne des news FR depuis NewsData.io vers PostgreSQL
+
+• Filtre : uniquement les articles publiés "aujourd'hui" (UTC) 
+• Pagination via nextPage
+• Insertion avec ON CONFLICT pour éviter les doublons (clé = url)
+• Logging propre (console + fichier optionnel)
+• Sauvegarde d'un wordcloud en PNG
+
+Variables d'environnement attendues :
+  NEWSDATA_API_KEY
+  PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD (optionnel si .pgpass ou autre)
+  LOG_DIR (optionnel)
+  HEADLESS=true|false (optionnel, par défaut true en CI/cron)
+"""
+from __future__ import annotations
+
 import os
-import requests
-import psycopg2
-from datetime import datetime, timezone
+import sys
+import logging
+from datetime import datetime
+from typing import Optional
+
 from dotenv import load_dotenv
+
+from src.core_logic import run_ingestion
+
+try:
+    from zoneinfo import ZoneInfo  # Python 3.9+
+except ImportError:  # pragma: no cover
+    from backports.zoneinfo import ZoneInfo  # type: ignore
 
 from src.plot_categories import generate_category_wordcloud_figure
 
-load_dotenv()
-API_KEY = os.getenv("NEWSDATA_API_KEY")
+LOGGER = logging.getLogger("wordcloud")
 
-# Heure actuelle (UTC) → début du jour
-today_utc = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+# ---------------------------------------------------------------------------
+# Config & logging
+# ---------------------------------------------------------------------------
 
-# Connexion PostgreSQL
-conn = psycopg2.connect(
-    dbname="newsdata",
-    user="postgres",
-    password="admin",  # adapte à ton cas
-    host="localhost",
-    port="5432"
-)
-cur = conn.cursor()
+def setup_logging() -> None:
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_dir = os.getenv("LOG_DIR")
+    handlers = [logging.StreamHandler(sys.stdout)]
 
-url = "https://newsdata.io/api/1/news"
-total_inserted = 0
-page_token = None
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f"newsdata_{datetime.now().date()}.log")
+        handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
 
-while True:
-    params = {
-        "apikey": API_KEY,
-        "country": "fr",
-        "language": "fr"
-    }
-    if page_token:
-        params["page"] = page_token
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=handlers,
+    )
 
-    response = requests.get(url, params=params)
-    data = response.json()
+# ---------------------------------------------------------------------------
+# Wordcloud
+# ---------------------------------------------------------------------------
 
-    if data.get("status") != "success":
-        print(f"Erreur API : {data.get('results', {}).get('message') or data}")
-        break
+def save_wordcloud(headless: bool = True, db_url: str = None) -> str:
+    """
+    Génère et sauvegarde le wordcloud des catégories.
 
-    articles = data.get("results", [])
-    if not articles:
-        print("Aucune donnée reçue, arrêt.")
-        break
+    Args:
+        headless (bool): True pour environnement sans affichage.
+        db_url (str, optional): URL de la base pour re-générer la figure.
 
-    for art in articles:
-        pub_str = art.get("pubDate")
+    Returns:
+        str: Chemin du fichier sauvegardé ou empty string si échec.
+    """
+    fig = generate_category_wordcloud_figure(db_url=db_url) if db_url else generate_category_wordcloud_figure()
+
+    if headless:
+        out_dir = os.getenv("OUTPUT_DIR", "outputs")
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, f"wordcloud_{datetime.now().date()}.png")
         try:
-            pub_date = datetime.fromisoformat(pub_str.replace("Z", "+00:00")).astimezone(timezone.utc)
-        except Exception:
-            pub_date = None
+            # Utiliser savefig pour matplotlib
+            fig.savefig(out_path, dpi=300, bbox_inches='tight')
+            LOGGER.info("Wordcloud sauvegardé : %s", out_path)
+            return out_path
+        except Exception as e:
+            LOGGER.warning("Impossible d'enregistrer l'image via savefig: %s", e)
+            return ""
+    else:
+        # affichage interactif
+        plt.show()
+        return ""
 
-        if pub_date < today_utc:
-            continue  # filtré : article antérieur à aujourd'hui
 
-        cur.execute("""
-            INSERT INTO articles_fr (
-                title, url, source, category, published_at
-            ) VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (url) DO NOTHING;
-        """, (
-            art.get("title"),
-            art.get("link"),
-            art.get("source_id"),
-            art.get("category", [None])[0] if art.get("category") else None,
-            pub_date
-        ))
-        total_inserted += 1
+# ---------------------------------------------------------------------------
+# Entrée
+# ---------------------------------------------------------------------------
 
-    print(f"{len(articles)} articles insérés depuis page {page_token or '1'}.")
+if __name__ == "__main__":
+    load_dotenv()
+    setup_logging()
 
-    # Pagination via nextPage
-    page_token = data.get("nextPage")
-    if not page_token:
-        print("Toutes les pages ont été traitées.")
-        break
+    headless = os.getenv("HEADLESS", "true").lower() in {"1", "true", "yes"}
 
-conn.commit()
-cur.close()
-conn.close()
+    try:
+        inserted = run_ingestion()
+        save_wordcloud(headless=headless)
+    except Exception as exc:
+        logging.exception("Échec de l'ingestion : %s", exc)
+        # Code de retour non nul pour CI/monitoring
+        sys.exit(1)
 
-print(f"\nTotal inséré : {total_inserted} articles.")
-fig = generate_category_wordcloud_figure()
-fig.show()
+    sys.exit(0)
