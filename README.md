@@ -114,7 +114,7 @@ Dans `src/utils/translate.py` :
 
 ## Exemple de résultats
 
-![](outputs\wordcloud_2025-07-23.png){height=200px}
+<img src="outputs/wordcloud_2025-07-23.png" height="200">
 
 ---
 
