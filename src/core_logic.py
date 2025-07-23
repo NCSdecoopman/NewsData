@@ -18,7 +18,6 @@ MAX_RETRIES = 2                 # nombre max de retries sur 429/erreurs transito
 PAGE_SLEEP_SECONDS = 0.5        # pause minimale entre deux pages
 STOP_WHEN_OLD = True            # arrêter quand on tombe hors de la fenêtre du jour
 
-
 def fetch_articles(
     api_key: str,
     page_token: Optional[str] = None,

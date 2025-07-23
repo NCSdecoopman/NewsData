@@ -85,14 +85,8 @@ def save_wordcloud(headless: bool = True, db_url: str = None) -> str:
             LOGGER.warning("Impossible d'enregistrer l'image via savefig: %s", e)
             return ""
     else:
-        # affichage interactif
-        plt.show()
         return ""
 
-
-# ---------------------------------------------------------------------------
-# Entrée
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     load_dotenv()
