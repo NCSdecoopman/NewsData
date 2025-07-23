@@ -117,9 +117,3 @@ Dans `src/utils/translate.py` :
 <p align="center">
   <img src="outputs/wordcloud_2025-07-23.png" height="200px" />
 </p>
-
----
-
-## 📝 Licence
-
-MIT.
