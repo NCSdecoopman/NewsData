@@ -1,0 +1,38 @@
+# Clé
+.env
+*.env
+
+# Environnement virtuel
+env/
+
+# Dépendances
+*.lock
+Pipfile.lock
+poetry.lock
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Fichiers temporaires ou générés
+*.log
+*.db
+*.sqlite3
+*.csv
+*.json
+*.ipynb_checkpoints/
+
+# Tag de version personnalisé
+chachedit.tag
+
+# IDEs et éditeurs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
